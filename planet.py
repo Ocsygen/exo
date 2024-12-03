@@ -42,18 +42,29 @@ def create_table():
         query = query1 + query2 + query3
 
         curry.execute(query)
-        curry.execute('DESC Planets')
+        print("Table created successfully.")
+
+            
+        f.seek(0)
+        next(reader) 
+        for row in reader:
+            curry.execute("INSERT INTO Planets VALUES ('%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, '%s')", row)
+
+        conobj.commit()
+        print("Data inserted successfully.")
+
+        '''curry.execute('DESC Planets')
         re = curry.fetchall()
-        headers = [desc[0] for desc in curry.description]
-        print(tabulate(re, headers, tablefmt='grid'))
+        headers = [desc[0] for desc in curry.description]'''
+
 
 def view_table():
     global curry, headers
     view_query = "SELECT * FROM planets"
-    curry.execute(view_query)
+    curry.execute(view_query) 
     view_forloopvar = curry.fetchall()
     headers = [desc[0] for desc in curry.description]
-    if is_table_empty(): 
+    if isempty_table(): 
         print("The Table is Empty!") 
     else: 
         print(tabulate(view_forloopvar, headers, tablefmt='grid'))
@@ -62,3 +73,4 @@ create_table()
 view_table()
 curry.close
 conobj.close
+
