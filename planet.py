@@ -48,7 +48,7 @@ def create_table():
         f.seek(0)
         next(reader) 
         for row in reader:
-            curry.execute("INSERT INTO Planets VALUES ('%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, '%s')", row)
+            curry.execute("INSERT INTO Planets VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", row)
 
         conobj.commit()
         print("Data inserted successfully.")
@@ -68,6 +68,61 @@ def view_table():
         print("The Table is Empty!") 
     else: 
         print(tabulate(view_forloopvar, headers, tablefmt='grid'))
+
+def delete_table():
+    global conobj, curry
+    while True:
+        print("""
+Choose an option:
+1. Delete the entire table
+2. Delete some specific records
+3. Exit the command
+        """)
+        choice = input("Enter your choice (1/2/3): ")
+
+        if choice == '1':
+            try:
+                delete_query = "DROP TABLE IF EXISTS planets"
+                curry.execute(delete_query)
+                delete_confirmation = input("Are you sure you want to delete? y/Y or n/N? ")
+                if delete_confirmation.lower() == 'y':
+                    conobj.commit()
+                    print("The entire table has been deleted.")
+                elif delete_confirmation.lower() == 'n':
+                    conobj.rollback()
+                    print("Operation cancelled.")
+                else:
+                    print("Invalid option. Operation cancelled.")
+            except mysql.connector.Error:
+                print("Error - Invalid Connection")
+            break
+
+        elif choice == '2':
+            try:
+                column_name = input("Enter the column name for the condition: ")
+                value = input("Enter the value for the condition: ")
+                deleterecords_query = "DELETE FROM planets WHERE {} = %s".format(column_name)
+                curry.execute(deleterecords_query, (value,))
+                delete_confirmation = input("Are you sure you want to delete? y/Y or n/N? ")
+                if delete_confirmation.lower() == 'y':
+                    conobj.commit()
+                    print(f"Records where {column_name} = '{value}' have been deleted.")
+                elif delete_confirmation.lower() == 'n':
+                    conobj.rollback()
+                    print("Operation cancelled.")
+                else:
+                    print("Invalid option. Operation cancelled.")
+            except mysql.connector.Error:
+                print("Error - Invalid Connection")
+            break
+
+        elif choice == '3':
+            print("Over and Out")
+            break
+
+        else:
+            print("Invalid choice. Please try again.")
+
 
 create_table()
 view_table()
