@@ -1,7 +1,7 @@
 import csv
 import mysql.connector
 from tabulate import tabulate
-
+import sleep #use this in our error exception blocks(check sort and update fucntion
 conobj = mysql.connector.connect(host='localhost', user='root', passwd='groot', database='stars') 
 curry = conobj.cursor() 
 headers = [] 
