@@ -1,7 +1,7 @@
 import csv
 import mysql.connector
 from tabulate import tabulate
-import sleep #use this in our error exception blocks(check sort and update fucntion
+import time #use this in our error exception blocks(check sort and update fucntion
 conobj = mysql.connector.connect(host='localhost', user='root', passwd='groot', database='stars') 
 curry = conobj.cursor() 
 headers = [] 
@@ -181,10 +181,10 @@ def update():
         planets_2.append((sno,i))
         sno+=1
     print(tabulate(tuple(planets_2),headers=['Planet no.','Planetname'],tablefmt='grid'))   
-    Planet_name_input=int(input('enter the number corresponding to the planet in the table above'))
-    Planet_name=planets[(Planet_name_input)-1][0]
-    new_value=input('enter the new value that you want to input into the table')
     try:
+        Planet_name_input=int(input('enter the number corresponding to the planet in the table above'))
+        Planet_name=planets[(Planet_name_input)-1][0]
+        new_value=input('enter the new value that you want to input into the table')
         update_query="UPDATE PLANETS SET %s = %s where Planet_name='%s'"%(r[o-1][1],new_value,Planet_name)
         curry.execute(update_query)
         print('Are you sure about the changes your making?(y/n)')
