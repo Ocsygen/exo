@@ -57,7 +57,6 @@ def create_table():
         re = curry.fetchall()
         headers = [desc[0] for desc in curry.description]'''
 
-
 def view_table():
     global curry, headers
     view_query = "SELECT * FROM planets"
@@ -126,6 +125,83 @@ Choose an option:
 
 create_table()
 view_table()
+def sort():
+    print('HOW DO YOU WANNA SORT THE TABLE? --> 1.Ascending || 2.Descending')
+    i=int(input('Pick the no. correspinding to your choice:'))
+    r=[]
+    k=1
+    for i in headers:
+        r.append((k,i))
+        k+=1
+    column_tuple=tuple(r)
+    try:
+        if i == 1:
+            print(tabulate(column_tuple,['Col_no','Col_name'],tablefmt='grid'))
+            print('enter the corresponding no. of the column you want to sort by')
+            g=int(input())
+            sort_query='SELECT * FROM PLANETS ORDER BY %s'%(r[g-1][1])
+            curry.execute(sort_query)
+            print(tabulate(curry.fetchall(),headers=headers,tablefmt='grid'))
+            print('Sorting has been successful')
+        elif i == 2:
+            print(tabulate(tuple(r),['Col_no','Col_name'],tablefmt='grid'))
+            print('enter the corresponding no. of the column you want to sort by')
+            g=int(input())
+            sort_query='SELECT * FROM PLANETS ORDER BY %s DESC'%(r[g-1][1])
+            curry.execute(sort_query)
+            print(tabulate(curry.fetchall(),headers=headers,tablefmt='grid'))
+            print('Sorting has been successful')
+        else:
+            print('INVALID INPUT')#add break statement in loop(won't work here)
+    except:
+        print('Sorting failed')
+        print('An Error Has Occured')
+        for i in range(3,0,-1):
+            print('Breaking the loop in:',str(i),end='\r')
+            time.sleep(1)
+        print('The Loop has been restarted')
+        
+def update():
+    r=[]
+    k=1
+    for i in headers:
+        r.append((k,i))
+        k+=1
+    column_tuple=tuple(r)
+    print(tabulate(column_tuple,headers=['Col_no','Col_name'],tablefmt='grid'))
+    print('CHOOSE THE NUMBER CORRESPONDING TO THE COLUMN YOU WANT TO UPDATE:')
+    o=int(input('-->'))
+    planet_query='select Planet_name from planets'
+    curry.execute(planet_query)
+    planets=[]
+    planets_2=[]
+    sno=1
+    for i in curry.fetchall():
+        planets.append(i)
+        planets_2.append((sno,i))
+        sno+=1
+    print(tabulate(tuple(planets_2),headers=['Planet no.','Planetname'],tablefmt='grid'))   
+    Planet_name_input=int(input('enter the number corresponding to the planet in the table above'))
+    Planet_name=planets[(Planet_name_input)-1][0]
+    new_value=input('enter the new value that you want to input into the table')
+    try:
+        update_query="UPDATE PLANETS SET %s = %s where Planet_name='%s'"%(r[o-1][1],new_value,Planet_name)
+        curry.execute(update_query)
+        print('Are you sure about the changes your making?(y/n)')
+        i=str(input())
+        if i.upper()=='Y':
+            conobj.commit()
+            print('Table Updated Successfully')
+        else:
+            conobj.rollback()
+            print('Table updation Aborted')
+    except:
+        print('Updation failed')
+        print('An Error Has Occured')
+        for i in range(3,0,-1):
+            print('Breaking the loop in:',str(i),end='\r')
+            time.sleep(1)
+        print('The Loop has been restarted')
 curry.close
 conobj.close
 
