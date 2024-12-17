@@ -106,13 +106,13 @@ def create_table():
     try:
         with open('planets.csv', 'r', encoding='utf8') as f:
             reader = csv.reader(f)
-            heading = next(reader)
+            headers = next(reader)
             data = list(reader)
             columns = {}
 
             for i in data:
                 for index, value in enumerate(i):
-                    dataheader = heading[index]
+                    dataheader = headers[index]
                     if value.isdigit():
                         datatype = 'INT'
                         try:
@@ -260,6 +260,102 @@ def sort_table():
             print('Sorting has been successful')
         else:
             print('INVALID INPUT')
+        elif i == 3:
+        print(tabulate(column_tuple, ['Col_no', 'Col_name'], tablefmt='grid'))
+        print('Enter the corresponding no. of the column you want to join the table by:')
+        g=int(input())
+        no_records=int(input('enter the no. of records you wish to see per page '))
+        page=0
+        while True:
+            try:
+                offset = page * no_records
+                join_view_query = "SELECT * FROM planets common join planets on planets.{}=planets.{} LIMIT {} OFFSET {}".format(r[g-1][1],r[g-1][1],no_records, offset)
+                curry.execute(join_view_query)
+                view_forloopvar = curry.fetchall()
+                headers = [desc[0] for desc in curry.description]
+                print(tabulate(view_forloopvar, headers, tablefmt='grid'))
+                if isempty_table():
+                    print("The Table is Empty!")
+                    break
+                next_todo = input("Enter 'n' for next page, 'p' for previous page, or 'quit' to quit: ")
+                if next_todo.lower() == 'n':
+                    page += 1
+                elif next_todo.lower() == 'p' and page > 0:
+                    page -= 1
+                elif next_todo.lower() == 'quit':
+                    break
+                else:
+                    print("Invalid input - Exiting")
+                    break
+            except MemoryError:
+                print('The data size was too huge for python to parse through')
+                break
+    elif i == 4:
+        print('''Choose the no. corresponding to aggregate function to group by with
+        --->|1. AVERAGE |
+        --->|2. COUNT |
+        --->|3. SUM  |
+        --->|4. MIN  |
+        --->|5. MAX  |''')
+        group_by_input=int(input())
+        r = []
+        k = 1
+        for col in headers:
+            r.append((k, col))
+            k += 1
+        column_tuple = tuple(r)
+        if group_by_input==1:
+            print(tabulate(r,['Col_name','Col_datatype'],tablefmt='grid'))
+            print('enter the no. corresponding to the column you want to apply the aggregate function to ')
+            column_no_2=int(input())
+            print('enter the corresponding no. of the second column that you wanna group the data by')
+            column_no_1=int(input())
+            group_query = "SELECT {},AVG({}) from planets group by {}".format(r[column_no_1-1][1],r[column_no_2-1][1],r[column_no_1-1][1])
+            curry.execute(group_query)
+            
+            print(tabulate(curry.fetchall(),[desc[0] for desc in curry.description],tablefmt='grid'))
+        elif group_by_input==2:
+            print(tabulate(r,['Col_name','Col_datatype'],tablefmt='grid'))
+            print('enter the no. corresponding to the column you want to apply the aggregate function to ')
+            column_no_2=int(input())
+            print('enter the corresponding column of the second column that you wanna group the data by')
+            column_no_1=int(input())
+            group_query = "SELECT {},COUNT({}) from planets group by {}".format(r[column_no_1-1][1],r[column_no_2-1][1],r[column_no_1-1][1])
+            curry.execute(group_query)
+            print(tabulate(curry.fetchall(),[desc[0] for desc in curry.description],tablefmt='grid'))
+        elif group_by_input==3:
+            print(tabulate(r,['Col_name','Col_datatype'],tablefmt='grid'))
+            print('enter the no. corresponding to the column you want to apply the aggregate function to ')
+            column_no_2=int(input())
+            print('enter the corresponding column of the second column that you wanna group the data by')
+            column_no_1=int(input())
+            group_query = "SELECT {},SUM({}) from planets group by {}".format(r[column_no_1-1][1],r[column_no_2-1][1],r[column_no_1-1][1])
+            curry.execute(group_query)
+            print(tabulate(curry.fetchall(),[desc[0] for desc in curry.description],tablefmt='grid'))
+        elif group_by_input==4:
+            print(tabulate(r,['Col_name','Col_datatype'],tablefmt='grid'))
+            print('enter the no. corresponding to the column you want to apply the aggregate function to ')
+            column_no_2=int(input())
+            print('enter the corresponding column of the second column that you wanna group the data by')
+            column_no_1=int(input())
+            group_query = "SELECT {},MIN({}) from planets group by {}".format(r[column_no_1-1][1],r[column_no_2-1][1],r[column_no_1-1][1])
+            curry.execute(group_query)
+            print(tabulate(curry.fetchall(),[desc[0] for desc in curry.description],tablefmt='grid'))
+        elif group_by_input==5:
+            print(tabulate(r,['Col_name','Col_datatype'],tablefmt='grid'))
+            print('enter the no. corresponding to the column you want to apply the aggregate function to ')
+            column_no_2=int(input())
+            print('enter the corresponding column of the second column that you wanna group the data by')
+            column_no_1=int(input())
+            group_query = "SELECT {},MAX({}) from planets group by {}".format(r[column_no_1-1][1],r[column_no_2-1][1],r[column_no_1-1][1])
+            curry.execute(group_query)
+            print(tabulate(curry.fetchall(),[desc[0] for desc in curry.description],tablefmt='grid'))
+        else:
+            print('invalid response')
+            for i in range(3,0,-1):
+                print('Redirecting to Menu in',str(i),end='\r')
+                time.sleep(1)
+
     except:
         print('Sorting failed')
         print('An error has occurred')
@@ -267,6 +363,7 @@ def sort_table():
             print('Breaking the loop in:', str(i), end='\r')
             time.sleep(1)
         print('The loop has been restarted')
+    
 
 def update_table():
     global curry, conobj, headers
