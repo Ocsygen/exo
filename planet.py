@@ -13,10 +13,34 @@ passwd = None
 userid = []
 passwd = []
 
+def explain_table():
+    headers = [
+        (1, "Planet_Name", "The name of the planet."),
+        (2, "SNR_Emission_15_micron", "Signal-to-noise ratio of the planet's emission at 15 microns."),
+        (3, "SNR_Emission_5_micron", "Signal-to-noise ratio of the planet's emission at 5 microns."),
+        (4, "SNR_Transmission_K_mag", "Signal-to-noise ratio of the planet's transmission in the K magnitude band."),
+        (5, "Rp", "Radius of the planet (in Jupiter radii)."),
+        (6, "Mp", "Mass of the planet (in Jupiter masses)."),
+        (7, "Tday", "Day-side temperature of the planet (in Kelvin)."),
+        (8, "Teq", "Equilibrium temperature of the planet (in Kelvin)."),
+        (9, "log10g_p", "Logarithm (base 10) of the planet's surface gravity."),
+        (10, "Period", "Orbital period of the planet (in days)."),
+        (11, "Transit_Duration", "Duration of the planet's transit across its star (in hours)."),
+        (12, "K_mag", "K magnitude of the star the planet orbits."),
+        (13, "Distance", "Distance to the planet (in parsecs)."),
+        (14, "Teff", "Effective temperature of the star the planet orbits (in Kelvin)."),
+        (15, "log10g_s", "Logarithm (base 10) of the star's surface gravity."),
+        (16, "Transit_Flag", "Indicator of whether the planet transits its star (1 if it does, 0 if it does not)."),
+        (17, "Catalog_Name", "Name of the catalog from which the data is sourced.")
+    ]
+    
+    print(tabulate(headers, headers=['Col_no', 'Col_name', 'Description'], tablefmt='grid'))
+    
+
 def createloginid_table():
     try:
         curry.execute("""
-        CREATE TABLE IF NOT EXISTS loginid (
+        CREATE TABLE IF NOT EXISTS logini (
             name VARCHAR(40),
             userid VARCHAR(20) PRIMARY KEY,
             passwd VARCHAR(20)
@@ -36,10 +60,11 @@ def signup():
         passwd = input("Enter your password: ")
         passwdverify = input("Enter your password again: ")
         if passwdverify == passwd:
-            signup_query = "INSERT INTO loginid (name, userid, passwd) VALUES ('{}', '{}', '{}')".format(name, userid, passwd)
+            signup_query = "INSERT INTO logini (name, userid, passwd) VALUES ('{}', '{}', '{}')".format(name, userid, passwd)
             curry.execute(signup_query)
             conobj.commit()
             print("Sign Up was successful. Please log in.")
+            login()
         else:
             print("Passwords do not match. Please try again.")
             signup()
@@ -52,7 +77,7 @@ def login():
     passwdlist = []
 
     try:
-        curry.execute("SELECT * FROM loginid")
+        curry.execute("SELECT * FROM logini")
         loginfetch = curry.fetchall()
         for i in loginfetch:
             idlist.append(i[1])
@@ -177,7 +202,7 @@ def view_table():
 
 
 def delete_table():
-    global conobj, curry
+    global conobj, curry, headers
     while True:
         print("""
 Choose an option:
@@ -206,8 +231,22 @@ Choose an option:
 
         elif choice == '2':
             try:
-                column_name = input("Enter the column name for the condition: ")
+                curry.execute("DESC planets")
+                headers = [desc[0] for desc in curry.fetchall()]
+
+                r = []
+                k = 1
+                for col in headers:
+                    r.append((k, col))
+                    k += 1
+                column_tuple = tuple(r)
+                print(tabulate(column_tuple, headers=['Col_no', 'Col_name'], tablefmt='grid'))
+
+                print('Enter the corresponding no. of the column you want to delete records by:')
+                col_num = int(input('-->'))
+                column_name = r[col_num - 1][1]
                 value = input("Enter the value for the condition: ")
+
                 deleterecords_query = "DELETE FROM planets WHERE {} = %s".format(column_name)
                 curry.execute(deleterecords_query, (value,))
                 delete_confirmation = input("Are you sure you want to delete? y/Y or n/N? ")
@@ -230,11 +269,16 @@ Choose an option:
         else:
             print("Invalid choice. Please try again.")
 
+            
 def sort_table():
     global curry, headers
     try:
+        # Fetch column names from the table
+        curry.execute("DESC planets")
+        headers = [desc[0] for desc in curry.fetchall()]
+
         print('HOW DO YOU WANNA SORT THE TABLE? --> 1. Ascending || 2. Descending')
-        i = int(input('Pick the no. corresponding to your choice: '))
+        i = int(input('-->'))
         r = []
         k = 1
         for col in headers:
@@ -243,167 +287,101 @@ def sort_table():
         column_tuple = tuple(r)
 
         if i == 1:
-            print(tabulate(column_tuple, ['Col_no', 'Col_name'], tablefmt='grid'))
+            print(tabulate(column_tuple, headers=['Col_no', 'Col_name'], tablefmt='grid'))
             print('Enter the corresponding no. of the column you want to sort by:')
-            g = int(input())
-            sort_query = 'SELECT * FROM planets ORDER BY {}'.format(r[g - 1][1])
+            g = int(input('-->'))
+            print('Enter the corresponding no. of the column you want to group by:')
+            groupby_column_value = int(input('-->'))
+
+            # Adjust the query to avoid only_full_group_by error
+            sort_query = 'SELECT {0}, {1}, COUNT(*) FROM planets GROUP BY {0}, {1} ORDER BY {1}'.format(
+                r[groupby_column_value - 1][1], r[g - 1][1])
+            
             curry.execute(sort_query)
-            print(tabulate(curry.fetchall(), headers=headers, tablefmt='grid'))
+            result_headers = [r[groupby_column_value - 1][1], r[g - 1][1], "Count"]
+            print(tabulate(curry.fetchall(), headers=result_headers, tablefmt='grid'))
             print('Sorting has been successful')
+
         elif i == 2:
-            print(tabulate(column_tuple, ['Col_no', 'Col_name'], tablefmt='grid'))
+            print(tabulate(column_tuple, headers=['Col_no', 'Col_name'], tablefmt='grid'))
             print('Enter the corresponding no. of the column you want to sort by:')
-            g = int(input())
-            sort_query = 'SELECT * FROM planets ORDER BY {} DESC'.format(r[g - 1][1])
+            g = int(input('-->'))
+            print('Enter the corresponding no. of the column you want to group by:')
+            groupby_column_value = int(input('-->'))
+
+            # Adjust the query to avoid only_full_group_by error
+            sort_query = 'SELECT {0}, {1}, COUNT(*) FROM planets GROUP BY {0}, {1} ORDER BY {1} DESC'.format(
+                r[groupby_column_value - 1][1], r[g - 1][1])
+            
             curry.execute(sort_query)
-            print(tabulate(curry.fetchall(), headers=headers, tablefmt='grid'))
+            result_headers = [r[groupby_column_value - 1][1], r[g - 1][1], "Count"]
+            print(tabulate(curry.fetchall(), headers=result_headers, tablefmt='grid'))
             print('Sorting has been successful')
+
         else:
-            print('INVALID INPUT')
-        elif i == 3:
-        print(tabulate(column_tuple, ['Col_no', 'Col_name'], tablefmt='grid'))
-        print('Enter the corresponding no. of the column you want to join the table by:')
-        g=int(input())
-        no_records=int(input('enter the no. of records you wish to see per page '))
-        page=0
-        while True:
-            try:
-                offset = page * no_records
-                join_view_query = "SELECT * FROM planets common join planets on planets.{}=planets.{} LIMIT {} OFFSET {}".format(r[g-1][1],r[g-1][1],no_records, offset)
-                curry.execute(join_view_query)
-                view_forloopvar = curry.fetchall()
-                headers = [desc[0] for desc in curry.description]
-                print(tabulate(view_forloopvar, headers, tablefmt='grid'))
-                if isempty_table():
-                    print("The Table is Empty!")
-                    break
-                next_todo = input("Enter 'n' for next page, 'p' for previous page, or 'quit' to quit: ")
-                if next_todo.lower() == 'n':
-                    page += 1
-                elif next_todo.lower() == 'p' and page > 0:
-                    page -= 1
-                elif next_todo.lower() == 'quit':
-                    break
-                else:
-                    print("Invalid input - Exiting")
-                    break
-            except MemoryError:
-                print('The data size was too huge for python to parse through')
-                break
-    elif i == 4:
-        print('''Choose the no. corresponding to aggregate function to group by with
-        --->|1. AVERAGE |
-        --->|2. COUNT |
-        --->|3. SUM  |
-        --->|4. MIN  |
-        --->|5. MAX  |''')
-        group_by_input=int(input())
+            print('Invalid response')
+            for j in range(3, 0, -1):
+                print('Redirecting to Menu in:', str(j), end='\r')
+
+    except Exception as e:
+        print('Sorting failed')
+        print('An error has occurred:', str(e))
+        for j in range(3, 0, -1):
+            print('Breaking the loop in:', str(j), end='\r')
+            time.sleep(1)
+        print('The loop has been restarted')
+
+
+def update_table():
+    global curry, conobj, headers
+    try:
+        # Fetch column names from the table
+        curry.execute("DESC planets")
+        headers = [desc[0] for desc in curry.fetchall()]
+
+        # Prepare the list of columns with corresponding numbers
         r = []
         k = 1
         for col in headers:
             r.append((k, col))
             k += 1
         column_tuple = tuple(r)
-        if group_by_input==1:
-            print(tabulate(r,['Col_name','Col_datatype'],tablefmt='grid'))
-            print('enter the no. corresponding to the column you want to apply the aggregate function to ')
-            column_no_2=int(input())
-            print('enter the corresponding no. of the second column that you wanna group the data by')
-            column_no_1=int(input())
-            group_query = "SELECT {},AVG({}) from planets group by {}".format(r[column_no_1-1][1],r[column_no_2-1][1],r[column_no_1-1][1])
-            curry.execute(group_query)
-            
-            print(tabulate(curry.fetchall(),[desc[0] for desc in curry.description],tablefmt='grid'))
-        elif group_by_input==2:
-            print(tabulate(r,['Col_name','Col_datatype'],tablefmt='grid'))
-            print('enter the no. corresponding to the column you want to apply the aggregate function to ')
-            column_no_2=int(input())
-            print('enter the corresponding column of the second column that you wanna group the data by')
-            column_no_1=int(input())
-            group_query = "SELECT {},COUNT({}) from planets group by {}".format(r[column_no_1-1][1],r[column_no_2-1][1],r[column_no_1-1][1])
-            curry.execute(group_query)
-            print(tabulate(curry.fetchall(),[desc[0] for desc in curry.description],tablefmt='grid'))
-        elif group_by_input==3:
-            print(tabulate(r,['Col_name','Col_datatype'],tablefmt='grid'))
-            print('enter the no. corresponding to the column you want to apply the aggregate function to ')
-            column_no_2=int(input())
-            print('enter the corresponding column of the second column that you wanna group the data by')
-            column_no_1=int(input())
-            group_query = "SELECT {},SUM({}) from planets group by {}".format(r[column_no_1-1][1],r[column_no_2-1][1],r[column_no_1-1][1])
-            curry.execute(group_query)
-            print(tabulate(curry.fetchall(),[desc[0] for desc in curry.description],tablefmt='grid'))
-        elif group_by_input==4:
-            print(tabulate(r,['Col_name','Col_datatype'],tablefmt='grid'))
-            print('enter the no. corresponding to the column you want to apply the aggregate function to ')
-            column_no_2=int(input())
-            print('enter the corresponding column of the second column that you wanna group the data by')
-            column_no_1=int(input())
-            group_query = "SELECT {},MIN({}) from planets group by {}".format(r[column_no_1-1][1],r[column_no_2-1][1],r[column_no_1-1][1])
-            curry.execute(group_query)
-            print(tabulate(curry.fetchall(),[desc[0] for desc in curry.description],tablefmt='grid'))
-        elif group_by_input==5:
-            print(tabulate(r,['Col_name','Col_datatype'],tablefmt='grid'))
-            print('enter the no. corresponding to the column you want to apply the aggregate function to ')
-            column_no_2=int(input())
-            print('enter the corresponding column of the second column that you wanna group the data by')
-            column_no_1=int(input())
-            group_query = "SELECT {},MAX({}) from planets group by {}".format(r[column_no_1-1][1],r[column_no_2-1][1],r[column_no_1-1][1])
-            curry.execute(group_query)
-            print(tabulate(curry.fetchall(),[desc[0] for desc in curry.description],tablefmt='grid'))
-        else:
-            print('invalid response')
-            for i in range(3,0,-1):
-                print('Redirecting to Menu in',str(i),end='\r')
-                time.sleep(1)
-
-    except:
-        print('Sorting failed')
-        print('An error has occurred')
-        for i in range(3, 0, -1):
-            print('Breaking the loop in:', str(i), end='\r')
-            time.sleep(1)
-        print('The loop has been restarted')
-    
-
-def update_table():
-    global curry, conobj, headers
-    try:
-        r = []
-        k = 1
-        for i in headers:
-            r.append((k, i))
-            k += 1
-        column_tuple = tuple(r)
         print(tabulate(column_tuple, headers=['Col_no', 'Col_name'], tablefmt='grid'))
+
         print('CHOOSE THE NUMBER CORRESPONDING TO THE COLUMN YOU WANT TO UPDATE:')
         o = int(input('-->'))
+
+        # Fetch planet names for updating
         planet_query = 'SELECT Planet_name FROM planets'
         curry.execute(planet_query)
         planets = []
         planets_2 = []
         sno = 1
-        for i in curry.fetchall():
-            planets.append(i)
-            planets_2.append((sno, i))
+        for row in curry.fetchall():
+            planets.append(row)
+            planets_2.append((sno, row))
             sno += 1
         print(tabulate(tuple(planets_2), headers=['Planet no.', 'Planetname'], tablefmt='grid'))
+
         Planet_name_input = int(input('Enter the number corresponding to the planet in the table above: '))
         Planet_name = planets[(Planet_name_input) - 1][0]
         new_value = input('Enter the new value that you want to input into the table: ')
         update_query = "UPDATE PLANETS SET {} = '{}' WHERE Planet_name='{}'".format(r[o - 1][1], new_value, Planet_name)
         curry.execute(update_query)
+
         print('Are you sure about the changes you are making? (y/n)')
-        i = str(input())
-        if i.upper() == 'Y':
+        confirmation = input()
+        if confirmation.upper() == 'Y':
             conobj.commit()
             print('Table Updated Successfully')
         else:
             conobj.rollback()
             print('Table updation Aborted')
-    except:
-        print("An error occurred while updating the table.")
-        for i in range(3, 0, -1):
-            print('Breaking the loop in:', str(i), end='\r')
+
+    except Exception as e:
+        print("An error occurred while updating the table:", str(e))
+        for j in range(3, 0, -1):
+            print('Breaking the loop in:', str(j), end='\r')
             time.sleep(1)
         print('The Loop has been restarted')
 
@@ -413,13 +391,18 @@ def export_to_csv():
         curry.execute("SELECT * FROM planets")
         records = curry.fetchall()
         headers = [desc[0] for desc in curry.description]
-        with open('planets_exportedfile.csv', 'w') as csvfile:
+
+        with open('planets_exportedfile.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(headers)
             writer.writerows(records)
+        
         print("Table exported to planets_exportedfile.csv successfully.")
-    except:
-        print("An error occurred while exporting to CSV.")
+    except Exception as e:
+        print("An error occurred while exporting to CSV:", str(e))
+
+export_to_csv()
+
 
 def export_to_binary():
     try:
@@ -433,9 +416,12 @@ def export_to_binary():
 
 
 def filter_and_search_table():
+    global curry, headers
+
+    # Fetch column names from the table
     try:
-        curry.execute("SELECT * FROM planets LIMIT 1")
-        headers = [desc[0] for desc in curry.description]
+        curry.execute("DESC planets")
+        headers = [desc[0] for desc in curry.fetchall()]
     except:
         print("An error occurred while retrieving column names.")
 
@@ -450,6 +436,10 @@ def filter_and_search_table():
                 curry.execute(paginated_query)
                 results = curry.fetchall()
 
+                if not results:
+                    print("No more records to display.")
+                    break
+
                 print(tabulate(results, headers, tablefmt='grid'))
 
                 next_todo = input("Enter 'n' for next page, 'p' for previous page, or 'q' to quit: ").lower()
@@ -462,8 +452,8 @@ def filter_and_search_table():
                 else:
                     print("Invalid input. Exiting.")
                     break
-        except:
-            print("An error occurred while paginating the results.")
+        except Exception as e:
+            print("An error occurred while paginating the results:", str(e))
 
     def aggregate(filtered_query):
         while True:
@@ -479,32 +469,40 @@ def filter_and_search_table():
             choice = input("Enter your choice: ")
 
             try:
-                if choice == '1':
-                    column = input("Enter the column name for sum: ")
-                    agg_query = "SELECT SUM({}) FROM ({})".format(column, filtered_query)
-                elif choice == '2':
-                    column = input("Enter the column name for maximum: ")
-                    agg_query = "SELECT MAX({}) FROM ({})".format(column, filtered_query)
-                elif choice == '3':
-                    column = input("Enter the column name for minimum: ")
-                    agg_query = "SELECT MIN({}) FROM ({})".format(column, filtered_query)
-                elif choice == '4':
-                    column = input("Enter the column name for average: ")
-                    agg_query = "SELECT AVG({}) FROM ({})".format(column, filtered_query)
-                elif choice == '5':
-                    column = input("Enter the column name for count: ")
-                    agg_query = "SELECT COUNT({}) FROM ({})".format(column, filtered_query)
+                if choice in ['1', '2', '3', '4', '5']:
+                    # Display column names with numbers
+                    r = []
+                    k = 1
+                    for col in headers:
+                        r.append((k, col))
+                        k += 1
+                    column_tuple = tuple(r)
+                    print(tabulate(column_tuple, headers=['Col_no', 'Col_name'], tablefmt='grid'))
+
+                    # User selects column number
+                    col_num = int(input('Enter the corresponding no. of the column: '))
+                    column = r[col_num - 1][1]
+
+                    if choice == '1':
+                        agg_query = "SELECT SUM({}) FROM ({}) as filtered".format(column, filtered_query)
+                    elif choice == '2':
+                        agg_query = "SELECT MAX({}) FROM ({}) as filtered".format(column, filtered_query)
+                    elif choice == '3':
+                        agg_query = "SELECT MIN({}) FROM ({}) as filtered".format(column, filtered_query)
+                    elif choice == '4':
+                        agg_query = "SELECT AVG({}) FROM ({}) as filtered".format(column, filtered_query)
+                    elif choice == '5':
+                        agg_query = "SELECT COUNT({}) FROM ({}) as filtered".format(column, filtered_query)
+
+                    curry.execute(agg_query)
+                    result = curry.fetchone()
+                    print("Result: {}".format(result[0]))
                 elif choice == '6':
                     break
                 else:
                     print("Invalid choice. Please try again.")
-                    continue
-
-                curry.execute(agg_query)
-                result = curry.fetchone()
-                print("Result: {}".format(result[0]))
-            except:
-                print("An error occurred while performing the aggregate function.")
+            except Exception as e:
+                print("An error occurred while performing the aggregate function:", str(e))
 
     while True:
         print("""
@@ -521,39 +519,38 @@ def filter_and_search_table():
         choice = input("Enter your choice: ")
 
         try:
-            if choice == '1':
-                column = input("Enter the column name for range filtering: ")
-                min_value = input("Enter the minimum value: ")
-                max_value = input("Enter the maximum value: ")
-                filter_query = "SELECT * FROM planets WHERE {} BETWEEN '{}' AND '{}'".format(column, min_value, max_value)
-                paginated(filter_query)
-                aggregate(filter_query)
-            elif choice == '2':
-                column = input("Enter the column name for pattern matching: ")
-                pattern = input("Enter the pattern (e.g., 'K%'): ")
-                filter_query = "SELECT * FROM planets WHERE {} LIKE '{}'".format(column, pattern)
-                paginated(filter_query)
-                aggregate(filter_query)
-            elif choice == '3':
-                column = input("Enter the column name for is null: ")
-                filter_query = "SELECT * FROM planets WHERE {} IS NULL".format(column)
-                paginated(filter_query)
-                aggregate(filter_query)
-            elif choice == '4':
-                column = input("Enter the column name for is not null: ")
-                filter_query = "SELECT * FROM planets WHERE {} IS NOT NULL".format(column)
-                paginated(filter_query)
-                aggregate(filter_query)
-            elif choice == '5':
-                column = input("Enter the column name for greater than: ")
-                value = input("Enter the value: ")
-                filter_query = "SELECT * FROM planets WHERE {} > '{}'".format(column, value)
-                paginated(filter_query)
-                aggregate(filter_query)
-            elif choice == '6':
-                column = input("Enter the column name for less than: ")
-                value = input("Enter the value: ")
-                filter_query = "SELECT * FROM planets WHERE {} < '{}'".format(column, value)
+            if choice in ['1', '2', '3', '4', '5', '6']:
+                # Display column names with numbers
+                r = []
+                k = 1
+                for col in headers:
+                    r.append((k, col))
+                    k += 1
+                column_tuple = tuple(r)
+                print(tabulate(column_tuple, headers=['Col_no', 'Col_name'], tablefmt='grid'))
+
+                # User selects column number
+                col_num = int(input('Enter the corresponding no. of the column: '))
+                column = r[col_num - 1][1]
+
+                if choice == '1':
+                    min_value = input("Enter the minimum value: ")
+                    max_value = input("Enter the maximum value: ")
+                    filter_query = "SELECT * FROM planets WHERE {} BETWEEN '{}' AND '{}'".format(column, min_value, max_value)
+                elif choice == '2':
+                    pattern = input("Enter the pattern (e.g., 'K%'): ")
+                    filter_query = "SELECT * FROM planets WHERE {} LIKE '{}'".format(column, pattern)
+                elif choice == '3':
+                    filter_query = "SELECT * FROM planets WHERE {} IS NULL".format(column)
+                elif choice == '4':
+                    filter_query = "SELECT * FROM planets WHERE {} IS NOT NULL".format(column)
+                elif choice == '5':
+                    value = input("Enter the value: ")
+                    filter_query = "SELECT * FROM planets WHERE {} > '{}'".format(column, value)
+                elif choice == '6':
+                    value = input("Enter the value: ")
+                    filter_query = "SELECT * FROM planets WHERE {} < '{}'".format(column, value)
+
                 paginated(filter_query)
                 aggregate(filter_query)
             elif choice == '7':
@@ -564,8 +561,8 @@ def filter_and_search_table():
                 break
             else:
                 print("Invalid choice. Please try again.")
-        except:
-            print("An error occurred while applying the filter.")
+        except Exception as e:
+            print("An error occurred while applying the filter:", str(e))
 
 
 def menu_drive_table():
@@ -574,12 +571,13 @@ def menu_drive_table():
         Main Menu:
         1. Create Table
         2. View Table
-        3. Update Table
-        4. Filter Table
-        5. Sort Table
-        6. Convert to Another Format
-        7. Delete Table
-        8. Exit
+        3. Explaination of Column Names
+        4. Update Table
+        5. Filter Table
+        6. Sort Table
+        7. Convert to Another Format
+        8. Delete Table
+        9. Exit
         """)
         try:
             ch = int(input("Enter your choice: "))
@@ -587,13 +585,15 @@ def menu_drive_table():
                 create_table()
             elif ch == 2:
                 view_table()
-            elif ch == 3:
-                update_table()
+            elif ch==3:
+                explain_table()
             elif ch == 4:
-                filter_and_search_table()
+                update_table()
             elif ch == 5:
-                sort_table()
+                filter_and_search_table()
             elif ch == 6:
+                sort_table()
+            elif ch == 7:
                 print("""
                 Conversion Options:
                 1. Convert to CSV
@@ -606,9 +606,9 @@ def menu_drive_table():
                     export_to_binary()
                 else:
                     print("Enter an appropriate option.")
-            elif ch == 7:
-                delete_table()
             elif ch == 8:
+                delete_table()
+            elif ch == 9:
                 print("Exiting...")
                 break
             else:
