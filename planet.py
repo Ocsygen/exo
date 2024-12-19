@@ -3,15 +3,16 @@ import mysql.connector
 from tabulate import tabulate
 import time
 import pickle
+from art import *
 
 conobj = mysql.connector.connect(host='localhost', user='root', passwd='groot', database='stars')
 curry = conobj.cursor()
 
 headers = [] 
-userid = None 
-passwd = None
-userid = []
-passwd = []
+
+print(text2art("WELCOME TO", space=1))
+print(text2art("PROJECT SAGAN", space = 1 ))
+
 
 def explain_table():
     headers = [
@@ -47,47 +48,41 @@ def createloginid_table():
         )
         """)
         conobj.commit()
-    except:
-        print("An error occurred while creating the loginid table.")
+    except Exception as e:
+        print("An error occurred while creating the loginid table.", str(e))
 
 createloginid_table()
 
 def signup():
-    global userid, passwd
     try:
         name = input("Enter your name: ")
         userid = input("Enter your userid: ")
         passwd = input("Enter your password: ")
         passwdverify = input("Enter your password again: ")
         if passwdverify == passwd:
-            signup_query = "INSERT INTO logini (name, userid, passwd) VALUES ('{}', '{}', '{}')".format(name, userid, passwd)
-            curry.execute(signup_query)
+            signup_query = "INSERT INTO logini (name, userid, passwd) VALUES (%s, %s, %s)"
+            curry.execute(signup_query, (name, userid, passwd))
             conobj.commit()
             print("Sign Up was successful. Please log in.")
-            login()
         else:
             print("Passwords do not match. Please try again.")
             signup()
-    except:
-        print("An error occurred during signup.")
+    except Exception as e:
+        print("An error occurred during signup.", str(e))
 
 def login():
     attempts = 0
-    idlist = []
-    passwdlist = []
-
     try:
         curry.execute("SELECT * FROM logini")
         loginfetch = curry.fetchall()
-        for i in loginfetch:
-            idlist.append(i[1])
-            passwdlist.append(i[2])
+        idlist = [i[1] for i in loginfetch]
+        passwdlist = [i[2] for i in loginfetch]
 
         userid = input("Enter the userid: ")
-        if userid.lower() in idlist:
+        if userid in idlist:
             while attempts < 3:
                 passwd = input("Enter the password: ")
-                if passwd == passwdlist[idlist.index(userid.lower())]:
+                if passwd == passwdlist[idlist.index(userid)]:
                     print("Login Successful")
                     return True
                 else:
@@ -98,22 +93,34 @@ def login():
             return login()
         else:
             print("User ID not found.")
-    except:
-        print("An error occurred during login.")
+    except Exception as e:
+        print("An error occurred during login", str(e))
     return False
 
 def main():
     acc_check = input("Do you have a registered account? y/n: ")
     if acc_check.lower() == "n":
         signup()
-    if acc_check.lower() == "y":
+        if login():
+            print("Access granted to the rest of the commands.")
+        else:
+            print("Login failed after signup.")
+    elif acc_check.lower() == "y":
         if login():
             print("Access granted to the rest of the commands.")
         else:
             print("Login failed. Redirecting to signup.")
             signup()
+            if login():
+                print("Access granted to the rest of the commands.")
+            else:
+                print("Login failed after signup.")
+    else:
+        print("Invalid input. Please enter 'y' or 'n'.")
+        main()
 
-main() 
+main()
+
 
 def isempty_table():
     global curry
@@ -400,8 +407,6 @@ def export_to_csv():
         print("Table exported to planets_exportedfile.csv successfully.")
     except Exception as e:
         print("An error occurred while exporting to CSV:", str(e))
-
-export_to_csv()
 
 
 def export_to_binary():
